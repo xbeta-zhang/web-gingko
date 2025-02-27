@@ -1,0 +1,972 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web-Gingko （v0.1, 250225 AIzyxβ）</title>
+    <style>
+        :root {
+            --card-bg: #ffffff;
+            --card-border: #e0e0e0;
+            --card-active-border: #4285f4;
+            --column-bg: #f5f5f5;
+            --text-color: #333333;
+            --header-bg: #f0f0f0;
+            --card-width: 280px;
+            --card-padding: 12px;
+            --column-gap: 20px;
+            --card-gap: 10px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            line-height: 1.5;
+            color: var(--text-color);
+            background-color: #fafafa;
+            overflow-x: auto;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            background-color: var(--header-bg);
+            padding: 10px 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 500;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 6px 12px;
+            border: none;
+            background-color: #4285f4;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        button:hover {
+            background-color: #3367d6;
+        }
+
+        button.secondary {
+            background-color: #f1f1f1;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+
+        button.secondary:hover {
+            background-color: #e5e5e5;
+        }
+
+        .container {
+            display: flex;
+            flex: 1;
+            overflow-x: auto;
+            overflow-y: hidden;
+            padding: 20px;
+        }
+
+        .columns-container {
+            display: flex;
+            gap: 0;
+            height: 100%;
+        }
+
+        .column {
+            flex: 0 0 var(--card-width);
+            background-color: transparent;
+            border-radius: 5px;
+            padding: 5px;
+            overflow-y: auto;
+            max-height: 100%;
+            scrollbar-width: none; /* Firefox */
+            -ms-overflow-style: none; /* IE and Edge */
+        }
+        
+        /* 隐藏滚动条但保留滚动功能 */
+        .column::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 4px;
+            padding: 8px;
+            margin-bottom: var(--card-gap);
+            cursor: pointer;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            word-break: break-word;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+
+        .card:hover {
+            border-color: #bdbdbd;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .card.active {
+            border-left: 3px solid var(--card-active-border);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .card-content {
+            margin-bottom: 8px;
+            min-height: 18px;
+            padding: 2px;
+            outline: none;
+            white-space: pre-wrap;
+        }
+
+        .card.active .card-content {
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 3px;
+        }
+
+        .column-title {
+            margin-bottom: 10px;
+            font-weight: 500;
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        .card-editor {
+            width: 100%;
+            min-height: 100px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            margin-top: 5px;
+            font-family: inherit;
+            resize: vertical;
+        }
+
+        .card-buttons {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .card-buttons button {
+            font-size: 0.8rem;
+            padding: 3px 8px;
+        }
+
+        .empty-column-message {
+            color: #777;
+            font-style: italic;
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        /* 状态信息显示 */
+        .status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .status.visible {
+            opacity: 1;
+        }
+
+        .card.highlighted {
+            background-color: #f0f8ff; /* 淡蓝色背景 */
+            border-color: #4285f4;
+        }
+
+        /* 添加模态对话框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .modal-overlay.visible {
+            display: flex;
+        }
+        
+        .modal-content {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+            width: 400px;
+            max-width: 90%;
+        }
+        
+        .modal-title {
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .modal-input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>web-gingko</h1>
+        <div class="controls">
+            <button id="new-document-btn">New</button>
+            <button class="secondary" id="save-btn">Save</button>
+            <select id="document-select">
+                <option value="">select...</option>
+            </select>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="columns-container" id="columns-container">
+            <!-- 列将通过JavaScript动态生成 -->
+        </div>
+    </div>
+
+    <div class="status" id="status-message"></div>
+
+    <!-- 添加模态对话框 -->
+    <div class="modal-overlay" id="new-document-modal">
+        <div class="modal-content">
+            <h3 class="modal-title">新建文档</h3>
+            <input type="text" class="modal-input" id="document-title-input" placeholder="请输入文档名称" autofocus>
+            <div class="modal-buttons">
+                <button class="secondary" id="cancel-new-document">取消</button>
+                <button id="confirm-new-document">创建</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 数据结构和全局状态
+        const state = {
+            documents: [],
+            currentDocumentId: null,
+            currentDocument: null,
+            activeCardId: null,
+            columns: [],
+            expandedCards: new Set()
+        };
+
+        // IndexedDB 配置
+        const dbConfig = {
+            name: 'WebGingkoDB',
+            version: 1,
+            storeName: 'documents'
+        };
+
+        // 初始化数据库
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbConfig.name, dbConfig.version);
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(dbConfig.storeName)) {
+                        db.createObjectStore(dbConfig.storeName, { keyPath: 'id' });
+                    }
+                };
+                
+                request.onsuccess = (event) => {
+                    const db = event.target.result;
+                    resolve(db);
+                };
+                
+                request.onerror = (event) => {
+                    reject('IndexedDB初始化失败: ' + event.target.error);
+                };
+            });
+        }
+
+        // 显示状态信息
+        function showStatus(message, duration = 2000) {
+            const statusEl = document.getElementById('status-message');
+            statusEl.textContent = message;
+            statusEl.classList.add('visible');
+            
+            setTimeout(() => {
+                statusEl.classList.remove('visible');
+            }, duration);
+        }
+
+        // 从数据库加载文档列表
+        async function loadDocumentList() {
+            try {
+                const db = await initDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(dbConfig.storeName, 'readonly');
+                    const store = transaction.objectStore(dbConfig.storeName);
+                    const request = store.getAll();
+                    
+                    request.onsuccess = () => {
+                        state.documents = request.result;
+                        updateDocumentSelect();
+                        resolve(request.result);
+                    };
+                    
+                    request.onerror = () => {
+                        reject('加载文档列表失败');
+                    };
+                });
+            } catch (error) {
+                console.error('加载文档列表错误:', error);
+                showStatus('加载文档列表失败');
+            }
+        }
+
+        // 更新文档选择下拉菜单
+        function updateDocumentSelect() {
+            const select = document.getElementById('document-select');
+            
+            // 清除现有选项（保留第一个）
+            while (select.options.length > 1) {
+                select.remove(1);
+            }
+            
+            // 添加文档选项
+            state.documents.forEach(doc => {
+                const option = document.createElement('option');
+                option.value = doc.id;
+                option.textContent = doc.title || `文档 ${doc.id.substring(0, 8)}`;
+                select.appendChild(option);
+            });
+            
+            // 设置当前选中文档
+            if (state.currentDocumentId) {
+                select.value = state.currentDocumentId;
+            }
+        }
+
+        // 加载指定文档
+        async function loadDocument(documentId) {
+            try {
+                const db = await initDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(dbConfig.storeName, 'readonly');
+                    const store = transaction.objectStore(dbConfig.storeName);
+                    const request = store.get(documentId);
+                    
+                    request.onsuccess = () => {
+                        if (request.result) {
+                            state.currentDocument = request.result;
+                            state.currentDocumentId = documentId;
+                            state.activeCardId = findRootCardId(state.currentDocument.tree);
+                            renderDocument();
+                            showStatus('文档加载成功');
+                            resolve(request.result);
+                        } else {
+                            reject('找不到文档');
+                        }
+                    };
+                    
+                    request.onerror = () => {
+                        reject('加载文档失败');
+                    };
+                });
+            } catch (error) {
+                console.error('加载文档错误:', error);
+                showStatus('加载文档失败', 3000);
+            }
+        }
+
+        // 查找根卡片ID
+        function findRootCardId(tree) {
+            if (!tree || !tree.length) return null;
+            return tree[0].id;
+        }
+
+        // 保存当前文档
+        async function saveCurrentDocument() {
+            if (!state.currentDocument) {
+                showStatus('没有需要保存的文档');
+                return;
+            }
+            
+            try {
+                const db = await initDB();
+                return new Promise((resolve, reject) => {
+                    const transaction = db.transaction(dbConfig.storeName, 'readwrite');
+                    const store = transaction.objectStore(dbConfig.storeName);
+                    const request = store.put(state.currentDocument);
+                    
+                    request.onsuccess = () => {
+                        showStatus('文档保存成功');
+                        // 刷新文档列表
+                        loadDocumentList();
+                        resolve();
+                    };
+                    
+                    request.onerror = () => {
+                        reject('保存文档失败');
+                    };
+                });
+            } catch (error) {
+                console.error('保存文档错误:', error);
+                showStatus('保存文档失败', 3000);
+            }
+        }
+
+        // 创建新文档
+        function createNewDocument() {
+            // 显示对话框而不是直接创建
+            const modal = document.getElementById('new-document-modal');
+            const titleInput = document.getElementById('document-title-input');
+            titleInput.value = '新文档 ' + new Date().toLocaleDateString();
+            modal.classList.add('visible');
+            setTimeout(() => titleInput.focus(), 100);
+        }
+
+        // 添加创建文档的实际功能
+        function createDocumentWithTitle(title) {
+            const newDocument = {
+                id: generateId(),
+                title: title || '未命名文档',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                tree: [
+                    {
+                        id: generateId(),
+                        content: '点击开始编辑这张卡片',
+                        children: []
+                    }
+                ]
+            };
+            
+            state.currentDocument = newDocument;
+            state.currentDocumentId = newDocument.id;
+            state.activeCardId = newDocument.tree[0].id;
+            state.documents.push(newDocument);
+            
+            renderDocument();
+            saveCurrentDocument();
+            updateDocumentSelect();
+            showStatus('文档已创建: ' + newDocument.title);
+        }
+
+        // 生成唯一ID
+        function generateId() {
+            return Date.now().toString(36) + Math.random().toString(36).substring(2);
+        }
+
+        // 渲染文档
+        function renderDocument() {
+            if (!state.currentDocument) return;
+            
+            // 确保有活动卡片
+            if (!state.activeCardId) {
+                state.activeCardId = findRootCardId(state.currentDocument.tree);
+            }
+            
+            // 构建要显示的列
+            buildColumns();
+            
+            // 渲染列到DOM
+            renderColumns();
+        }
+
+        // 构建要显示的列
+        function buildColumns() {
+            state.columns = [];
+            
+            if (!state.currentDocument || !state.currentDocument.tree.length) {
+                return;
+            }
+            
+            // 第一列总是显示所有根节点
+            const rootColumn = {
+                id: 'column-0',
+                title: '层级 1',
+                cards: state.currentDocument.tree,
+                level: 0
+            };
+            
+            state.columns.push(rootColumn);
+            
+            // 收集每个层级的所有节点
+            let allLevels = collectAllLevelNodes(state.currentDocument.tree);
+            
+            // 为每个层级创建一个列
+            for (let i = 0; i < allLevels.length; i++) {
+                if (allLevels[i] && allLevels[i].length > 0) {
+                    state.columns.push({
+                        id: `column-${i+1}`,
+                        title: `层级 ${i+2}`,
+                        cards: allLevels[i],
+                        level: i+1
+                    });
+                }
+            }
+        }
+
+        // 收集所有层级的节点
+        function collectAllLevelNodes(tree) {
+            let levels = [];  // 每个索引对应一个层级的所有节点
+            
+            function traverseTree(nodes, depth) {
+                if (!nodes || nodes.length === 0) return;
+                
+                // 确保levels数组有足够的元素
+                while (levels.length <= depth) {
+                    levels.push([]);
+                }
+                
+                for (const node of nodes) {
+                    if (node.children && node.children.length > 0) {
+                        // 将所有子节点添加到对应层级
+                        levels[depth] = levels[depth].concat(node.children);
+                        // 继续处理下一层级
+                        traverseTree(node.children, depth + 1);
+                    }
+                }
+            }
+            
+            traverseTree(tree, 0);
+            return levels;
+        }
+
+        // 获取卡片标题（取第一行或前20个字符）
+        function getCardTitle(card) {
+            if (!card.content) return '空白卡片';
+            const firstLine = card.content.split('\n')[0].trim();
+            return firstLine.length > 20 ? firstLine.substring(0, 20) + '...' : firstLine;
+        }
+
+        // 渲染列到DOM
+        function renderColumns() {
+            const container = document.getElementById('columns-container');
+            container.innerHTML = '';
+            
+            state.columns.forEach(column => {
+                const columnEl = document.createElement('div');
+                columnEl.className = 'column';
+                columnEl.id = column.id;
+                
+                if (column.cards && column.cards.length) {
+                    column.cards.forEach(card => {
+                        const cardEl = renderCard(card);
+                        columnEl.appendChild(cardEl);
+                    });
+                } else {
+                    const emptyMessage = document.createElement('div');
+                    emptyMessage.className = 'empty-column-message';
+                    emptyMessage.textContent = '没有卡片';
+                    columnEl.appendChild(emptyMessage);
+                }
+                
+                container.appendChild(columnEl);
+            });
+        }
+
+        // 渲染单个卡片
+        function renderCard(card) {
+            const cardEl = document.createElement('div');
+            cardEl.className = 'card';
+            cardEl.id = `card-${card.id}`;
+            
+            // 检查是否是活动卡片或其后代
+            const isActiveOrDescendant = card.id === state.activeCardId || 
+                                        isDescendantOfActive(card, state.activeCardId);
+            
+            if (card.id === state.activeCardId) {
+                cardEl.classList.add('active');
+            }
+            
+            if (isActiveOrDescendant) {
+                cardEl.classList.add('highlighted');
+            }
+            
+            // 创建可编辑内容区域
+            const contentEl = document.createElement('div');
+            contentEl.className = 'card-content';
+            contentEl.innerHTML = card.content.replace(/\n/g, '<br>');
+            
+            // 当卡片被激活时，使内容可编辑
+            if (card.id === state.activeCardId) {
+                contentEl.setAttribute('contenteditable', 'true');
+                contentEl.focus();
+                
+                // 防止内容区域的点击事件冒泡到卡片
+                contentEl.addEventListener('click', (e) => {
+                    if (card.id === state.activeCardId) {
+                        e.stopPropagation();
+                    }
+                });
+                
+                // 添加编辑事件处理
+                contentEl.addEventListener('blur', () => {
+                    // 当失去焦点时保存内容
+                    const newContent = contentEl.innerHTML.replace(/<br>/g, '\n');
+                    updateCardContent(card.id, newContent);
+                });
+                
+                // 添加键盘快捷键
+                contentEl.addEventListener('keydown', (e) => {
+                    // 按Enter+Shift创建新行，仅按Enter则保存
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        const newContent = contentEl.innerHTML.replace(/<br>/g, '\n');
+                        updateCardContent(card.id, newContent);
+                        contentEl.blur();
+                    }
+                });
+            }
+            
+            cardEl.appendChild(contentEl);
+            
+            // 添加事件监听
+            cardEl.addEventListener('click', (e) => {
+                // 检查点击的是否为按钮，如果不是按钮，则触发选中
+                if (e.target.tagName !== 'BUTTON') {
+                    setActiveCard(card.id);
+                }
+            });
+            
+            // 如果是活动卡片，添加操作按钮
+            if (card.id === state.activeCardId) {
+                const buttonsContainer = document.createElement('div');
+                buttonsContainer.className = 'card-buttons';
+
+                const addSiblingButton = document.createElement('button');
+                addSiblingButton.textContent = '+ ↓';
+                addSiblingButton.addEventListener('click', () => {
+                    addSiblingCard(card.id);
+                });                
+                const addChildButton = document.createElement('button');
+                addChildButton.textContent = '+ →';
+                addChildButton.addEventListener('click', () => {
+                    addChildCard(card.id);
+                });                                
+                
+                buttonsContainer.appendChild(addSiblingButton);
+                buttonsContainer.appendChild(addChildButton);
+                
+                cardEl.appendChild(buttonsContainer);
+            }
+            
+            return cardEl;
+        }
+
+        // 设置活动卡片
+        function setActiveCard(cardId) {
+            state.activeCardId = cardId;
+            renderDocument();
+            
+            // 在DOM更新后添加一个小延迟，确保新的DOM结构已经渲染
+            setTimeout(() => {
+                scrollChildrenIntoView(cardId);
+            }, 50);
+        }
+
+        // 滚动到子卡片的位置
+        function scrollChildrenIntoView(cardId) {
+            const card = findCardById(state.currentDocument.tree, cardId);
+            if (!card || !card.children || card.children.length === 0) return;
+            
+            // 获取活动卡片所在的列索引
+            const activeCardColumnIndex = state.columns.findIndex(column => 
+                column.cards && column.cards.some(c => c.id === cardId)
+            );
+            
+            // 如果找到列，并且有下一列（子卡片列）
+            if (activeCardColumnIndex >= 0 && activeCardColumnIndex < state.columns.length - 1) {
+                const nextColumn = document.getElementById(`column-${activeCardColumnIndex + 1}`);
+                if (!nextColumn) return;
+                
+                // 查找子卡片
+                const childrenIds = card.children.map(child => child.id);
+                
+                // 查找所有子卡片的DOM元素
+                const childElements = [];
+                for (const childId of childrenIds) {
+                    const childElement = document.getElementById(`card-${childId}`);
+                    if (childElement) {
+                        childElements.push(childElement);
+                    }
+                }
+                
+                if (childElements.length === 0) return;
+                
+                // 获取第一个和最后一个子卡片的位置
+                const firstChild = childElements[0];
+                const lastChild = childElements[childElements.length - 1];
+                
+                // 计算子卡片的上下边界
+                const topOffset = firstChild.offsetTop;
+                const bottomOffset = lastChild.offsetTop + lastChild.offsetHeight;
+                
+                // 计算子卡片组的中心点
+                const childrenCenter = topOffset + (bottomOffset - topOffset) / 2;
+                
+                // 计算列的可见高度
+                const columnHeight = nextColumn.clientHeight;
+                
+                // 计算滚动位置，使子卡片组居中
+                const scrollPosition = childrenCenter - columnHeight / 2;
+                
+                // 应用平滑滚动
+                nextColumn.scrollTo({
+                    top: scrollPosition,
+                    behavior: 'smooth'
+                });
+            }
+        }
+
+        // 更新卡片内容
+        function updateCardContent(cardId, newContent) {
+            const card = findCardById(state.currentDocument.tree, cardId);
+            if (card) {
+                card.content = newContent;
+                state.currentDocument.updatedAt = new Date().toISOString();
+                saveCurrentDocument();
+                renderDocument();
+            }
+        }
+
+        // 添加子卡片
+        function addChildCard(parentId) {
+            const parent = findCardById(state.currentDocument.tree, parentId);
+            if (parent) {
+                const newCard = {
+                    id: generateId(),
+                    content: '',
+                    children: []
+                };
+                
+                if (!parent.children) {
+                    parent.children = [];
+                }
+                
+                parent.children.push(newCard);
+                state.currentDocument.updatedAt = new Date().toISOString();
+                state.activeCardId = newCard.id;
+                saveCurrentDocument();
+                renderDocument();
+            }
+        }
+
+        // 添加同级卡片
+        function addSiblingCard(siblingId) {
+            const parent = findParentCard(state.currentDocument.tree, siblingId);
+            
+            if (parent) {
+                // 如果找到父卡片，添加到父卡片的子级
+                const newCard = {
+                    id: generateId(),
+                    content: '',
+                    children: []
+                };
+                
+                const siblingIndex = parent.children.findIndex(c => c.id === siblingId);
+                parent.children.splice(siblingIndex + 1, 0, newCard);
+                
+                state.currentDocument.updatedAt = new Date().toISOString();
+                state.activeCardId = newCard.id;
+                saveCurrentDocument();
+                renderDocument();
+            } else {
+                // 如果是根节点，添加一个新的根节点
+                const newCard = {
+                    id: generateId(),
+                    content: '',
+                    children: []
+                };
+                
+                // 找到当前节点在根数组中的位置
+                const siblingIndex = state.currentDocument.tree.findIndex(c => c.id === siblingId);
+                if (siblingIndex !== -1) {
+                    // 在此位置后插入新节点
+                    state.currentDocument.tree.splice(siblingIndex + 1, 0, newCard);
+                    state.currentDocument.updatedAt = new Date().toISOString();
+                    state.activeCardId = newCard.id;
+                    saveCurrentDocument();
+                    renderDocument();
+                }
+            }
+        }
+
+        // 查找指定ID的卡片
+        function findCardById(cards, cardId) {
+            for (const card of cards) {
+                if (card.id === cardId) {
+                    return card;
+                }
+                
+                if (card.children && card.children.length) {
+                    const found = findCardById(card.children, cardId);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        // 查找父卡片
+        function findParentCard(cards, childId, parent = null) {
+            for (const card of cards) {
+                if (card.id === childId) {
+                    return parent;
+                }
+                
+                if (card.children && card.children.length) {
+                    const found = findParentCard(card.children, childId, card);
+                    if (found) {
+                        return found;
+                    }
+                }
+            }
+            
+            return null;
+        }
+
+        // 检查卡片是否是活动卡片的后代
+        function isDescendantOfActive(card, activeCardId) {
+            if (!card || !activeCardId) return false;
+            
+            // 找到活动卡片
+            const activeCard = findCardById(state.currentDocument.tree, activeCardId);
+            if (!activeCard) return false;
+            
+            // 检查卡片是否是活动卡片的后代
+            return isDescendantOf(card, activeCard);
+        }
+
+        // 检查卡片是否是另一个卡片的后代
+        function isDescendantOf(card, ancestorCard) {
+            if (!card || !ancestorCard || !ancestorCard.children) return false;
+            
+            // 直接子节点检查
+            for (const child of ancestorCard.children || []) {
+                if (child.id === card.id) {
+                    return true;
+                }
+                // 递归检查
+                if (isDescendantOf(card, child)) {
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+
+        // 初始化事件监听
+        function initEventListeners() {
+            // 新建文档按钮
+            document.getElementById('new-document-btn').addEventListener('click', createNewDocument);
+            
+            // 确认创建文档
+            document.getElementById('confirm-new-document').addEventListener('click', () => {
+                const titleInput = document.getElementById('document-title-input');
+                const title = titleInput.value.trim();
+                createDocumentWithTitle(title);
+                document.getElementById('new-document-modal').classList.remove('visible');
+            });
+            
+            // 取消创建文档
+            document.getElementById('cancel-new-document').addEventListener('click', () => {
+                document.getElementById('new-document-modal').classList.remove('visible');
+            });
+            
+            // 在对话框中按Enter键确认
+            document.getElementById('document-title-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('confirm-new-document').click();
+                } else if (e.key === 'Escape') {
+                    document.getElementById('cancel-new-document').click();
+                }
+            });
+            
+            // 保存按钮
+            document.getElementById('save-btn').addEventListener('click', saveCurrentDocument);
+            
+            // 文档选择下拉菜单
+            document.getElementById('document-select').addEventListener('change', (event) => {
+                const documentId = event.target.value;
+                if (documentId) {
+                    loadDocument(documentId);
+                }
+            });
+
+            // 键盘快捷键
+            document.addEventListener('keydown', (event) => {
+                // Ctrl+S 保存文档
+                if (event.ctrlKey && event.key === 's') {
+                    event.preventDefault();
+                    saveCurrentDocument();
+                }
+            });
+        }
+
+        // 初始化应用
+        async function initApp() {
+            try {
+                await initDB();
+                await loadDocumentList();
+                initEventListeners();
+                
+                // 如果没有文档，创建一个
+                if (state.documents.length === 0) {
+                    // 自动触发新建文档对话框
+                    setTimeout(createNewDocument, 100);
+                }
+            } catch (error) {
+                console.error('初始化应用失败:', error);
+                showStatus('初始化应用失败', 5000);
+            }
+        }
+
+        // 启动应用
+        initApp();
+    </script>
+</body>
+</html>
